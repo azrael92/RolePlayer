@@ -80,6 +80,7 @@ export async function registerRoutes(
     const chat = await storage.createChat({ 
       title: title || "New Chat", 
       scenarioId, 
+      type: participantIds?.length > 1 ? 'group' : 'direct'
     });
 
     // Add participants (creator + invited)

@@ -24,7 +24,7 @@ export interface IStorage {
   getChat(id: number): Promise<Chat | undefined>;
   createChat(chat: { title?: string, scenarioId?: number, currentSceneId?: number }): Promise<Chat>;
   getChatMessages(chatId: number): Promise<ChatMessage[]>;
-  createChatMessage(message: { chatId: number, senderId?: string, content?: string, type: string, audioUrl?: string }): Promise<ChatMessage>;
+  createChatMessage(message: { chatId: number, senderId?: string, content?: string, type: string, fileUrl?: string, audioUrl?: string }): Promise<ChatMessage>;
   addChatParticipant(chatId: number, userId: string, role?: string): Promise<void>;
   getChatParticipants(chatId: number): Promise<any[]>; // Join with users
 
@@ -85,15 +85,8 @@ export class DatabaseStorage implements IStorage {
     
     if (chatIds.length === 0) return [];
     
-    // In Drizzle, "inArray" is needed for WHERE IN
-    // But basic select * from chats where id in chatIds
-    // Use raw sql or just map
-    // Better: Join
-    // For simplicity:
-    const result = await db.select().from(chats).where(sql`id IN ${chatIds}`).orderBy(desc(chats.updatedAt));
-    // Wait, sql helper import needed? No, I can use inArray from drizzle-orm
+    const result = await db.select().from(chats).where(inArray(chats.id, chatIds)).orderBy(desc(chats.updatedAt));
     return result; 
-    // Actually, I'll fix the import above if needed, but for now let's assume `inArray` is needed.
   }
 
   async getChat(id: number): Promise<Chat | undefined> {
@@ -101,7 +94,7 @@ export class DatabaseStorage implements IStorage {
     return chat;
   }
 
-  async createChat(chatData: { title?: string, scenarioId?: number, currentSceneId?: number }): Promise<Chat> {
+  async createChat(chatData: { title?: string, scenarioId?: number, currentSceneId?: number, type?: string }): Promise<Chat> {
     const [chat] = await db.insert(chats).values(chatData).returning();
     return chat;
   }
@@ -110,7 +103,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId)).orderBy(chatMessages.createdAt);
   }
 
-  async createChatMessage(message: { chatId: number, senderId?: string, content?: string, type: string, audioUrl?: string }): Promise<ChatMessage> {
+  async createChatMessage(message: { chatId: number, senderId?: string, content?: string, type: string, fileUrl?: string, audioUrl?: string }): Promise<ChatMessage> {
     const [msg] = await db.insert(chatMessages).values(message).returning();
     return msg;
   }

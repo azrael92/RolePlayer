@@ -1,22 +1,41 @@
-import { pgTable, serial, integer, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, boolean, jsonb, varchar, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { relations } from "drizzle-orm";
-import { users } from "./models/auth";
+import { relations, sql } from "drizzle-orm";
 
-// Export auth and chat models from integrations
-export * from "./models/auth";
-export * from "./models/chat";
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)]
+);
 
-// === SCENARIOS & SCENES ===
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  username: varchar("username").unique(),
+  profileImageUrl: varchar("profile_image_url"),
+  aboutMe: text("about_me"),
+  status: varchar("status").default("offline"),
+  lastSeen: timestamp("last_seen").defaultNow(),
+  preferences: jsonb("preferences").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const scenarios = pgTable("scenarios", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
   genre: text("genre"),
-  maturityRating: text("maturity_rating"), // PG, PG-13, R, etc.
+  maturityRating: text("maturity_rating"),
   tags: text("tags").array(),
-  authorId: text("author_id").references(() => users.id),
+  authorId: varchar("author_id").references(() => users.id),
   isPublic: boolean("is_public").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -29,12 +48,26 @@ export const scenes = pgTable("scenes", {
   order: integer("order").default(0),
 });
 
-// === USER-TO-USER CHATS ===
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 export const chats = pgTable("chats", {
   id: serial("id").primaryKey(),
   scenarioId: integer("scenario_id").references(() => scenarios.id),
   currentSceneId: integer("current_scene_id").references(() => scenes.id),
   title: text("title"),
+  type: text("type").default("direct"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -42,26 +75,26 @@ export const chats = pgTable("chats", {
 export const chatParticipants = pgTable("chat_participants", {
   id: serial("id").primaryKey(),
   chatId: integer("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
-  userId: text("user_id").notNull().references(() => users.id),
-  role: text("role").default("member"), // admin, member
+  userId: varchar("user_id").notNull().references(() => users.id),
+  role: text("role").default("member"),
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
 export const chatMessages = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
   chatId: integer("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
-  senderId: text("sender_id").references(() => users.id), // Nullable for system messages
+  senderId: varchar("sender_id").references(() => users.id),
   content: text("content"),
-  type: text("type").default("text"), // text, voice, image, system
+  type: text("type").default("text"),
+  fileUrl: text("file_url"),
   audioUrl: text("audio_url"),
-  metadata: jsonb("metadata"), // For extra data like sentiment, reaction
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// === AVATARS & LIBRARY ===
 export const avatars = pgTable("avatars", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
   scenarioId: integer("scenario_id").references(() => scenarios.id),
   name: text("name").notNull(),
   imageUrl: text("image_url"),
@@ -70,23 +103,21 @@ export const avatars = pgTable("avatars", {
 
 export const libraryItems = pgTable("library_items", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id),
-  type: text("type").notNull(), // background, character
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(),
   name: text("name").notNull(),
   url: text("url").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// === CONTACTS ===
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id),
-  contactId: text("contact_id").notNull().references(() => users.id),
-  status: text("status").default("pending"), // pending, accepted, blocked
+  userId: varchar("user_id").notNull().references(() => users.id),
+  contactId: varchar("contact_id").notNull().references(() => users.id),
+  status: text("status").default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// === RELATIONS ===
 export const scenariosRelations = relations(scenarios, ({ one, many }) => ({
   author: one(users, { fields: [scenarios.authorId], references: [users.id] }),
   scenes: many(scenes),
@@ -114,7 +145,6 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   sender: one(users, { fields: [chatMessages.senderId], references: [users.id] }),
 }));
 
-// === ZOD SCHEMAS ===
 export const insertScenarioSchema = createInsertSchema(scenarios).omit({ id: true, createdAt: true });
 export const insertSceneSchema = createInsertSchema(scenes).omit({ id: true });
 export const insertChatSchema = createInsertSchema(chats).omit({ id: true, createdAt: true, updatedAt: true });
@@ -123,7 +153,6 @@ export const insertAvatarSchema = createInsertSchema(avatars).omit({ id: true })
 export const insertContactSchema = createInsertSchema(contacts).omit({ id: true, createdAt: true });
 export const insertLibraryItemSchema = createInsertSchema(libraryItems).omit({ id: true, createdAt: true });
 
-// === TYPES ===
 export type Scenario = typeof scenarios.$inferSelect;
 export type InsertScenario = z.infer<typeof insertScenarioSchema>;
 export type Scene = typeof scenes.$inferSelect;
@@ -131,3 +160,7 @@ export type Chat = typeof chats.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type Avatar = typeof avatars.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
+export type Conversation = typeof conversations.$inferSelect;
+export type Message = typeof messages.$inferSelect;

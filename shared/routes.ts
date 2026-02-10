@@ -120,12 +120,9 @@ export const api = {
         path: '/api/chats/:id/messages' as const,
         input: z.object({
           content: z.string().optional(),
-          type: z.enum(['text', 'voice', 'image']).default('text'),
+          type: z.enum(['text', 'voice', 'image', 'video']).default('text'),
+          fileUrl: z.string().optional(),
           audioUrl: z.string().optional(),
-          // For voice messages, we might send base64 audio to a separate endpoint first, 
-          // get a URL/transcription, then post here. 
-          // For MVP, we'll assume the client handles the upload/transcription via other endpoints 
-          // or we handle it in the route handler.
         }),
         responses: {
           201: z.custom<typeof chatMessages.$inferSelect>(),
