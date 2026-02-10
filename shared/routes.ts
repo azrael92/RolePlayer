@@ -148,6 +148,35 @@ export const api = {
         201: z.custom<typeof avatars.$inferSelect>(),
       },
     },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/avatars/:id' as const,
+      input: z.object({
+        name: z.string().optional(),
+        imageUrl: z.string().optional(),
+        species: z.string().optional(),
+        gender: z.string().optional(),
+        scale: z.number().min(50).max(200).optional(),
+        description: z.string().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof avatars.$inferSelect>(),
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/avatars/:id' as const,
+      responses: {
+        200: z.object({ success: z.boolean() }),
+      },
+    },
+    seed: {
+      method: 'POST' as const,
+      path: '/api/avatars/seed' as const,
+      responses: {
+        200: z.object({ seeded: z.boolean() }),
+      },
+    },
   },
 
   // Contacts
@@ -194,10 +223,31 @@ export const api = {
         type: z.enum(['background', 'character']),
         name: z.string(),
         url: z.string(),
-        scenarioId: z.number().optional(),
+        species: z.string().optional(),
+        gender: z.string().optional(),
       }),
       responses: {
         201: z.custom<typeof libraryItems.$inferSelect>(),
+      },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/library/:id' as const,
+      input: z.object({
+        name: z.string().optional(),
+        url: z.string().optional(),
+        species: z.string().optional(),
+        gender: z.string().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof libraryItems.$inferSelect>(),
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/library/:id' as const,
+      responses: {
+        200: z.object({ success: z.boolean() }),
       },
     },
   },

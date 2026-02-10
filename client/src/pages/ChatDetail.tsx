@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useChat, useChatMessages, useSendMessage } from "@/hooks/use-chats";
 import { useAuth } from "@/hooks/use-auth";
+import { useAvatars } from "@/hooks/use-social";
 import { useVoiceRecorder } from "@/replit_integrations/audio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export default function ChatDetail() {
   const { data: chat } = useChat(chatId);
   const { data: messages, isLoading } = useChatMessages(chatId);
   const sendMessage = useSendMessage(chatId);
+  const { data: myAvatars } = useAvatars();
   
   const [inputText, setInputText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -86,14 +88,44 @@ export default function ChatDetail() {
           <div className={cn("w-full h-full bg-gradient-to-br", DEFAULT_SCENE_COLORS[gradientIndex])} />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
-        <div className="absolute bottom-3 left-4 flex items-center gap-2">
-          {participants.length > 0 ? participants.map((p: any, i: number) => (
-            <Avatar key={i} className="w-10 h-10 border-2 border-background shadow-lg">
-              <AvatarImage src={p.user?.profileImageUrl || undefined} />
-              <AvatarFallback className="text-xs bg-secondary">{p.user?.username?.charAt(0)?.toUpperCase() || "?"}</AvatarFallback>
-            </Avatar>
+        <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-1 px-4 pointer-events-none">
+          {myAvatars && myAvatars.length > 0 ? (
+            myAvatars.filter(a => a.isDefault).slice(0, 3).map((avatar: any) => {
+              const scale = (avatar.scale || 100) / 100;
+              const baseHeight = 120;
+              const height = baseHeight * scale;
+              return (
+                <div
+                  key={avatar.id}
+                  className="relative transition-all duration-500"
+                  style={{ height: `${height}px`, width: `${height * 0.6}px` }}
+                  data-testid={`scene-avatar-${avatar.id}`}
+                >
+                  {avatar.imageUrl ? (
+                    <img
+                      src={avatar.imageUrl}
+                      alt={avatar.name}
+                      className="w-full h-full object-contain object-bottom drop-shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-end justify-center">
+                      <Avatar className="w-10 h-10 border-2 border-background shadow-lg">
+                        <AvatarFallback className="text-xs bg-secondary">{avatar.name?.charAt(0) || "?"}</AvatarFallback>
+                      </Avatar>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : participants.length > 0 ? participants.map((p: any, i: number) => (
+            <div key={i} className="mb-3">
+              <Avatar className="w-10 h-10 border-2 border-background shadow-lg">
+                <AvatarImage src={p.user?.profileImageUrl || undefined} />
+                <AvatarFallback className="text-xs bg-secondary">{p.user?.username?.charAt(0)?.toUpperCase() || "?"}</AvatarFallback>
+              </Avatar>
+            </div>
           )) : (
-            <div className="flex items-center gap-2">
+            <div className="mb-3">
               <Avatar className="w-10 h-10 border-2 border-background shadow-lg">
                 <AvatarFallback className="text-xs bg-secondary">{(user as any)?.username?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback>
               </Avatar>

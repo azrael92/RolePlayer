@@ -99,6 +99,10 @@ export const avatars = pgTable("avatars", {
   name: text("name").notNull(),
   imageUrl: text("image_url"),
   description: text("description"),
+  species: text("species").default("human"),
+  gender: text("gender").default("male"),
+  scale: integer("scale").default(100),
+  isDefault: boolean("is_default").default(false),
 });
 
 export const libraryItems = pgTable("library_items", {
@@ -107,6 +111,9 @@ export const libraryItems = pgTable("library_items", {
   type: text("type").notNull(),
   name: text("name").notNull(),
   url: text("url").notNull(),
+  species: text("species"),
+  gender: text("gender"),
+  isDefault: boolean("is_default").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -158,8 +165,11 @@ export type InsertScenario = z.infer<typeof insertScenarioSchema>;
 export type Scene = typeof scenes.$inferSelect;
 export type Chat = typeof chats.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertScene = z.infer<typeof insertSceneSchema>;
 export type Avatar = typeof avatars.$inferSelect;
+export type InsertAvatar = z.infer<typeof insertAvatarSchema>;
 export type Contact = typeof contacts.$inferSelect;
+export type LibraryItem = typeof libraryItems.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
 export type Conversation = typeof conversations.$inferSelect;

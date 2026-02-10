@@ -122,11 +122,19 @@ export async function registerRoutes(
   });
 
   // Avatars
+  app.post(api.avatars.seed.path, async (req, res) => {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.seedDefaultAvatars(user.claims.sub);
+    res.json({ seeded: true });
+  });
+
   app.get(api.avatars.list.path, async (req, res) => {
     const user = req.user as any;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-    const avatars = await storage.getAvatars(user.claims.sub);
-    res.json(avatars);
+    await storage.seedDefaultAvatars(user.claims.sub);
+    const avatarList = await storage.getAvatars(user.claims.sub);
+    res.json(avatarList);
   });
 
   app.post(api.avatars.create.path, async (req, res) => {
@@ -135,6 +143,27 @@ export async function registerRoutes(
     const input = api.avatars.create.input.parse(req.body);
     const avatar = await storage.createAvatar({ ...input, userId: user.claims.sub });
     res.status(201).json(avatar);
+  });
+
+  app.patch(api.avatars.update.path, async (req, res) => {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const avatarList = await storage.getAvatars(user.claims.sub);
+    const owned = avatarList.find(a => a.id === Number(req.params.id));
+    if (!owned) return res.status(403).json({ message: "Not your avatar" });
+    const input = api.avatars.update.input.parse(req.body);
+    const avatar = await storage.updateAvatar(Number(req.params.id), input);
+    res.json(avatar);
+  });
+
+  app.delete(api.avatars.delete.path, async (req, res) => {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const avatarList = await storage.getAvatars(user.claims.sub);
+    const owned = avatarList.find(a => a.id === Number(req.params.id));
+    if (!owned) return res.status(403).json({ message: "Not your avatar" });
+    await storage.deleteAvatar(Number(req.params.id));
+    res.json({ success: true });
   });
 
   // Contacts
@@ -167,6 +196,7 @@ export async function registerRoutes(
   app.get(api.library.list.path, async (req, res) => {
     const user = req.user as any;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.seedDefaultAvatars(user.claims.sub);
     const items = await storage.getLibraryItems(user.claims.sub);
     res.json(items);
   });
@@ -177,6 +207,27 @@ export async function registerRoutes(
     const input = api.library.create.input.parse(req.body);
     const item = await storage.createLibraryItem({ ...input, userId: user.claims.sub });
     res.status(201).json(item);
+  });
+
+  app.patch(api.library.update.path, async (req, res) => {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const items = await storage.getLibraryItems(user.claims.sub);
+    const owned = items.find(i => i.id === Number(req.params.id));
+    if (!owned) return res.status(403).json({ message: "Not your library item" });
+    const input = api.library.update.input.parse(req.body);
+    const item = await storage.updateLibraryItem(Number(req.params.id), input);
+    res.json(item);
+  });
+
+  app.delete(api.library.delete.path, async (req, res) => {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const items = await storage.getLibraryItems(user.claims.sub);
+    const owned = items.find(i => i.id === Number(req.params.id));
+    if (!owned) return res.status(403).json({ message: "Not your library item" });
+    await storage.deleteLibraryItem(Number(req.params.id));
+    res.json({ success: true });
   });
 
   // Users (Profile)

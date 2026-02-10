@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
-import type { InsertAvatar, InsertContact } from "@shared/schema";
+import type { Avatar } from "@shared/schema";
 import { z } from "zod";
 
 // CONTACTS
@@ -72,16 +72,53 @@ export function useAvatars() {
 export function useCreateAvatar() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: InsertAvatar) => {
-      const validated = api.avatars.create.input.parse(data);
+    mutationFn: async (data: any) => {
       const res = await fetch(api.avatars.create.path, {
         method: api.avatars.create.method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validated),
+        body: JSON.stringify(data),
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to create avatar");
-      return api.avatars.create.responses[201].parse(await res.json());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.avatars.list.path] });
+    },
+  });
+}
+
+export function useUpdateAvatar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: number; [key: string]: any }) => {
+      const url = buildUrl(api.avatars.update.path, { id });
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to update avatar");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.avatars.list.path] });
+    },
+  });
+}
+
+export function useDeleteAvatar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const url = buildUrl(api.avatars.delete.path, { id });
+      const res = await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete avatar");
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.avatars.list.path] });
@@ -113,7 +150,45 @@ export function useCreateLibraryItem() {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to add to library");
-      return api.library.create.responses[201].parse(await res.json());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.library.list.path] });
+    },
+  });
+}
+
+export function useUpdateLibraryItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: number; [key: string]: any }) => {
+      const url = buildUrl(api.library.update.path, { id });
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to update library item");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.library.list.path] });
+    },
+  });
+}
+
+export function useDeleteLibraryItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const url = buildUrl(api.library.delete.path, { id });
+      const res = await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete library item");
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.library.list.path] });

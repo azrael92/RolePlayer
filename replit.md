@@ -23,7 +23,9 @@ A messaging application for voice/chat role-play with changing backgrounds, avat
 - Default gradient fallback when no scene background image is set
 - Scenario and scene management with dynamic backgrounds
 - AI role-play bot (`/bot` route) with scenario context, streaming responses, and user feedback learning
-- Avatar system, contacts with invites, media library
+- Avatar system with 5 species (Human, Elf, Demon, Centaur, Fae), male/female variants, scale control (50-200%)
+- Default avatars auto-seeded per user on first access (10 avatars + 10 library items)
+- Contacts with invites, media library
 - User profiles with QR code sharing
 
 ## Project Structure
@@ -35,6 +37,17 @@ A messaging application for voice/chat role-play with changing backgrounds, avat
 - `client/src/App.tsx` - Root layout with SidebarProvider and routing
 - `client/src/components/AppSidebar.tsx` - Shadcn Sidebar navigation
 - `client/src/pages/` - React pages (Chats, ChatDetail, BotChat, Scenarios, Library, Contacts, Profile)
+- `client/public/avatars/` - Default avatar images (5 species x 2 genders)
+
+## Avatar System
+- 5 species: Human, Elf, Demon, Centaur, Fae
+- Each species has male and female variant images
+- Scale: 50-200% (default 100%), controls avatar size in scene window
+- Avatars table: id, userId, name, imageUrl, species, gender, scale, isDefault
+- Library items table: id, userId, type, name, url, species, gender, isDefault
+- Auto-seeded on first GET /api/avatars or GET /api/library call
+- Ownership verified on update/delete routes
+- Scene window in ChatDetail renders first 3 default avatars with scale-based sizing
 
 ## Bot System
 - Bot user ID: "rp-bot"
@@ -43,9 +56,10 @@ A messaging application for voice/chat role-play with changing backgrounds, avat
 - Ownership verified before message injection
 
 ## Recent Changes
+- Added default avatar system with 5 species, male/female variants, and scale control
+- Auto-seeding of 10 default avatars + library items per user
+- Library page redesigned: Characters tab shows avatar cards with species/gender badges and scale slider
+- Scene window updated to show full-body character avatars from avatar system
+- Ownership checks on all avatar/library update/delete routes
 - Major UI overhaul: migrated from purple fantasy theme to clean Discord/iMessage style
 - Replaced custom Navigation with Shadcn Sidebar primitives
-- Added scene visualization window with dynamic backgrounds and avatars
-- Chat text fades into scene window via CSS mask
-- Default gradient fallback for chats without scene backgrounds
-- All pages unified with consistent header bar and layout structure

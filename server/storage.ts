@@ -26,14 +26,16 @@ export interface IStorage {
   getChatMessages(chatId: number): Promise<ChatMessage[]>;
   createChatMessage(message: { chatId: number, senderId?: string, content?: string, type: string, fileUrl?: string, audioUrl?: string }): Promise<ChatMessage>;
   addChatParticipant(chatId: number, userId: string, role?: string): Promise<void>;
-  getChatParticipants(chatId: number): Promise<any[]>; // Join with users
+  getChatParticipants(chatId: number): Promise<any[]>;
 
   // Avatars
   getAvatars(userId: string): Promise<Avatar[]>;
   createAvatar(avatar: any): Promise<Avatar>;
+  updateAvatar(id: number, updates: Partial<any>): Promise<Avatar>;
+  deleteAvatar(id: number): Promise<void>;
 
   // Contacts
-  getContacts(userId: string): Promise<any[]>; // Join with users
+  getContacts(userId: string): Promise<any[]>;
   createContact(userId: string, contactId: string): Promise<void>;
   updateContactStatus(id: number, status: string): Promise<void>;
   getContactByUsername(username: string): Promise<any | undefined>;
@@ -41,9 +43,15 @@ export interface IStorage {
   // Library
   getLibraryItems(userId: string): Promise<LibraryItem[]>;
   createLibraryItem(item: any): Promise<LibraryItem>;
+  updateLibraryItem(id: number, updates: Partial<any>): Promise<LibraryItem>;
+  deleteLibraryItem(id: number): Promise<void>;
 
   // Users (Profile)
   updateUser(id: string, updates: Partial<any>): Promise<any>;
+
+  // Seeding
+  seedDefaultAvatars(userId: string): Promise<void>;
+  hasDefaultAvatars(userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -132,6 +140,15 @@ export class DatabaseStorage implements IStorage {
     return newAvatar;
   }
 
+  async updateAvatar(id: number, updates: Partial<any>): Promise<Avatar> {
+    const [updated] = await db.update(avatars).set(updates).where(eq(avatars.id, id)).returning();
+    return updated;
+  }
+
+  async deleteAvatar(id: number): Promise<void> {
+    await db.delete(avatars).where(eq(avatars.id, id));
+  }
+
   // Contacts
   async getContacts(userId: string): Promise<any[]> {
     return await db.select({
@@ -166,14 +183,78 @@ export class DatabaseStorage implements IStorage {
     return newItem;
   }
 
+  async updateLibraryItem(id: number, updates: Partial<any>): Promise<LibraryItem> {
+    const [updated] = await db.update(libraryItems).set(updates).where(eq(libraryItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLibraryItem(id: number): Promise<void> {
+    await db.delete(libraryItems).where(eq(libraryItems.id, id));
+  }
+
   // Users
   async updateUser(id: string, updates: Partial<any>): Promise<any> {
     const [updated] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
     return updated;
   }
+
+  // Seeding
+  async hasDefaultAvatars(userId: string): Promise<boolean> {
+    const existing = await db.select({ id: avatars.id }).from(avatars)
+      .where(and(eq(avatars.userId, userId), eq(avatars.isDefault, true)))
+      .limit(1);
+    return existing.length > 0;
+  }
+
+  async seedDefaultAvatars(userId: string): Promise<void> {
+    try {
+      const has = await this.hasDefaultAvatars(userId);
+      if (has) return;
+    } catch {
+      return;
+    }
+
+    const defaults = [
+      { species: "human", gender: "male", name: "Human Male", imageUrl: "/avatars/human-male.png" },
+      { species: "human", gender: "female", name: "Human Female", imageUrl: "/avatars/human-female.png" },
+      { species: "elf", gender: "male", name: "Elf Male", imageUrl: "/avatars/elf-male.png" },
+      { species: "elf", gender: "female", name: "Elf Female", imageUrl: "/avatars/elf-female.png" },
+      { species: "demon", gender: "male", name: "Demon Male", imageUrl: "/avatars/demon-male.png" },
+      { species: "demon", gender: "female", name: "Demon Female", imageUrl: "/avatars/demon-female.png" },
+      { species: "centaur", gender: "male", name: "Centaur Male", imageUrl: "/avatars/centaur-male.png" },
+      { species: "centaur", gender: "female", name: "Centaur Female", imageUrl: "/avatars/centaur-female.png" },
+      { species: "fae", gender: "male", name: "Fae Male", imageUrl: "/avatars/fae-male.png" },
+      { species: "fae", gender: "female", name: "Fae Female", imageUrl: "/avatars/fae-female.png" },
+    ];
+
+    try {
+      for (const d of defaults) {
+        await db.insert(avatars).values({
+          userId,
+          name: d.name,
+          imageUrl: d.imageUrl,
+          species: d.species,
+          gender: d.gender,
+          scale: 100,
+          isDefault: true,
+          description: `Default ${d.species} ${d.gender} avatar`,
+        });
+        await db.insert(libraryItems).values({
+          userId,
+          type: "character",
+          name: d.name,
+          url: d.imageUrl,
+          species: d.species,
+          gender: d.gender,
+          isDefault: true,
+        });
+      }
+    } catch {
+      // Ignore duplicate seeding errors from race conditions
+    }
+  }
 }
 
-// Helper needed for getChats
 import { sql, inArray } from "drizzle-orm";
 
 export const storage = new DatabaseStorage();
