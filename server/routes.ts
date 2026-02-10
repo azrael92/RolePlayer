@@ -26,6 +26,7 @@ export async function registerRoutes(
 
   // Scenarios
   app.get(api.scenarios.list.path, async (req, res) => {
+    await storage.seedDefaultScenarios();
     const scenarios = await storage.getScenarios();
     res.json(scenarios);
   });

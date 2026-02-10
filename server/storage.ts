@@ -52,6 +52,8 @@ export interface IStorage {
   // Seeding
   seedDefaultAvatars(userId: string): Promise<void>;
   hasDefaultAvatars(userId: string): Promise<boolean>;
+  seedDefaultScenarios(): Promise<void>;
+  hasDefaultScenarios(): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -198,6 +200,90 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  // Default Scenarios
+  async hasDefaultScenarios(): Promise<boolean> {
+    const existing = await db.select({ id: scenarios.id }).from(scenarios)
+      .where(eq(scenarios.isPublic, true))
+      .limit(1);
+    return existing.length > 0;
+  }
+
+  async seedDefaultScenarios(): Promise<void> {
+    try {
+      const has = await this.hasDefaultScenarios();
+      if (has) return;
+    } catch {
+      return;
+    }
+
+    const defaults = [
+      {
+        title: "The Enchanted Forest",
+        description: "Deep within an ancient forest lies a world of magic and mystery. Towering trees whisper secrets, and mythical creatures roam the moss-covered paths. Adventurers must navigate treacherous terrain and forge alliances to uncover the forest's hidden power.",
+        genre: "Fantasy",
+        maturityRating: "PG-13",
+        isPublic: true,
+      },
+      {
+        title: "City of Shadows",
+        description: "A sprawling medieval city teeming with intrigue, thieves' guilds, and political machinations. Navigate the cobblestone streets, strike deals in smoky taverns, and uncover conspiracies that threaten the kingdom's fragile peace.",
+        genre: "Fantasy",
+        maturityRating: "PG-13",
+        isPublic: true,
+      },
+      {
+        title: "The Dragon's Keep",
+        description: "A fearsome dragon has claimed a mountain fortress as its lair, hoarding treasure and terrorizing nearby villages. Heroes must brave the treacherous mountain paths, solve ancient puzzles, and face the beast in its domain.",
+        genre: "Fantasy",
+        maturityRating: "PG-13",
+        isPublic: true,
+      },
+      {
+        title: "Tavern Tales",
+        description: "The Prancing Pegasus is the most famous tavern in the realm. Travelers from all walks of life gather here to share stories, make deals, and sometimes settle scores. Tonight, a mysterious stranger arrives with an urgent quest.",
+        genre: "Fantasy",
+        maturityRating: "PG",
+        isPublic: true,
+      },
+      {
+        title: "Court Intrigue",
+        description: "Within the ornate throne room of Castle Everhart, noble houses vie for the monarch's favor. Alliances shift like sand, secrets are currency, and one wrong word can mean exile or worse. Navigate the deadly game of politics and power.",
+        genre: "Fantasy",
+        maturityRating: "PG-13",
+        isPublic: true,
+      },
+      {
+        title: "The Haunted Dungeon",
+        description: "Beneath the ruins of an ancient fortress lies a dungeon filled with traps, undead guardians, and forgotten treasures. A party of adventurers descends into the darkness, armed with torches, steel, and desperate courage.",
+        genre: "Horror",
+        maturityRating: "R",
+        isPublic: true,
+      },
+      {
+        title: "Voyage Across the Sea",
+        description: "A merchant vessel sets sail across uncharted waters, carrying a diverse crew with hidden motives. Storms, sea monsters, and rival pirates await on the open ocean. Who will survive the perilous journey to the legendary island?",
+        genre: "Adventure",
+        maturityRating: "PG-13",
+        isPublic: true,
+      },
+      {
+        title: "The Desert Expedition",
+        description: "An archaeological expedition ventures deep into the scorching desert to find the lost temple of an ancient civilization. Sandstorms, ancient curses, and rival treasure hunters stand between the team and their discovery.",
+        genre: "Adventure",
+        maturityRating: "PG-13",
+        isPublic: true,
+      },
+    ];
+
+    try {
+      for (const s of defaults) {
+        await db.insert(scenarios).values(s);
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
   // Seeding
   async hasDefaultAvatars(userId: string): Promise<boolean> {
     const existing = await db.select({ id: avatars.id }).from(avatars)
@@ -206,19 +292,21 @@ export class DatabaseStorage implements IStorage {
     return existing.length > 0;
   }
 
-  async seedDefaultAvatars(userId: string): Promise<void> {
-    try {
-      const has = await this.hasDefaultAvatars(userId);
-      if (has) return;
-    } catch {
-      return;
-    }
+  async hasDefaultBackgrounds(userId: string): Promise<boolean> {
+    const existing = await db.select({ id: libraryItems.id }).from(libraryItems)
+      .where(and(eq(libraryItems.userId, userId), eq(libraryItems.isDefault, true), eq(libraryItems.type, "background")))
+      .limit(1);
+    return existing.length > 0;
+  }
 
-    const defaults = [
+  async seedDefaultAvatars(userId: string): Promise<void> {
+    const defaultAvatars = [
       { species: "human", gender: "male", name: "Human Male", imageUrl: "/avatars/human-male.png" },
       { species: "human", gender: "female", name: "Human Female", imageUrl: "/avatars/human-female.png" },
       { species: "elf", gender: "male", name: "Elf Male", imageUrl: "/avatars/elf-male.png" },
       { species: "elf", gender: "female", name: "Elf Female", imageUrl: "/avatars/elf-female.png" },
+      { species: "dwarf", gender: "male", name: "Dwarf Male", imageUrl: "/avatars/dwarf-male.png" },
+      { species: "dwarf", gender: "female", name: "Dwarf Female", imageUrl: "/avatars/dwarf-female.png" },
       { species: "demon", gender: "male", name: "Demon Male", imageUrl: "/avatars/demon-male.png" },
       { species: "demon", gender: "female", name: "Demon Female", imageUrl: "/avatars/demon-female.png" },
       { species: "centaur", gender: "male", name: "Centaur Male", imageUrl: "/avatars/centaur-male.png" },
@@ -227,30 +315,68 @@ export class DatabaseStorage implements IStorage {
       { species: "fae", gender: "female", name: "Fae Female", imageUrl: "/avatars/fae-female.png" },
     ];
 
+    const defaultBackgrounds = [
+      { name: "Enchanted Forest", url: "/backgrounds/forest.png" },
+      { name: "Medieval City", url: "/backgrounds/city.png" },
+      { name: "Cozy Bedroom", url: "/backgrounds/bedroom.png" },
+      { name: "Grand Castle", url: "/backgrounds/castle.png" },
+      { name: "Rustic Tavern", url: "/backgrounds/tavern.png" },
+      { name: "Ocean Coast", url: "/backgrounds/ocean.png" },
+      { name: "Mountain Range", url: "/backgrounds/mountain.png" },
+      { name: "Desert Ruins", url: "/backgrounds/desert.png" },
+      { name: "Crystal Cave", url: "/backgrounds/cave.png" },
+      { name: "Dark Dungeon", url: "/backgrounds/dungeon.png" },
+      { name: "Peaceful Village", url: "/backgrounds/village.png" },
+      { name: "Ancient Library", url: "/backgrounds/library.png" },
+      { name: "Throne Room", url: "/backgrounds/throne-room.png" },
+      { name: "Enchanted Garden", url: "/backgrounds/garden.png" },
+      { name: "Battlefield", url: "/backgrounds/battlefield.png" },
+    ];
+
     try {
-      for (const d of defaults) {
-        await db.insert(avatars).values({
-          userId,
-          name: d.name,
-          imageUrl: d.imageUrl,
-          species: d.species,
-          gender: d.gender,
-          scale: 100,
-          isDefault: true,
-          description: `Default ${d.species} ${d.gender} avatar`,
-        });
-        await db.insert(libraryItems).values({
-          userId,
-          type: "character",
-          name: d.name,
-          url: d.imageUrl,
-          species: d.species,
-          gender: d.gender,
-          isDefault: true,
-        });
+      const hasAvatars = await this.hasDefaultAvatars(userId);
+      if (!hasAvatars) {
+        for (const d of defaultAvatars) {
+          await db.insert(avatars).values({
+            userId,
+            name: d.name,
+            imageUrl: d.imageUrl,
+            species: d.species,
+            gender: d.gender,
+            scale: 100,
+            isDefault: true,
+            description: `Default ${d.species} ${d.gender} avatar`,
+          });
+          await db.insert(libraryItems).values({
+            userId,
+            type: "character",
+            name: d.name,
+            url: d.imageUrl,
+            species: d.species,
+            gender: d.gender,
+            isDefault: true,
+          });
+        }
       }
     } catch {
-      // Ignore duplicate seeding errors from race conditions
+      // Ignore duplicate seeding errors
+    }
+
+    try {
+      const hasBgs = await this.hasDefaultBackgrounds(userId);
+      if (!hasBgs) {
+        for (const bg of defaultBackgrounds) {
+          await db.insert(libraryItems).values({
+            userId,
+            type: "background",
+            name: bg.name,
+            url: bg.url,
+            isDefault: true,
+          });
+        }
+      }
+    } catch {
+      // Ignore duplicate seeding errors
     }
   }
 }

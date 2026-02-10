@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 const SPECIES_LABELS: Record<string, string> = {
   human: "Human",
   elf: "Elf",
+  dwarf: "Dwarf",
   demon: "Demon",
   centaur: "Centaur",
   fae: "Fae",

@@ -19,12 +19,14 @@ A messaging application for voice/chat role-play with changing backgrounds, avat
 ## Key Features
 - Single and group messaging with media support (text, voice, image, video)
 - Scene visualization window at top of chat showing dynamic backgrounds and participant avatars
+- Scene window uses default background from library when no scenario background is set
 - Chat messages fade into the scene window from below (CSS mask)
-- Default gradient fallback when no scene background image is set
 - Scenario and scene management with dynamic backgrounds
+- 8 pre-made default scenarios (Enchanted Forest, City of Shadows, Dragon's Keep, etc.)
 - AI role-play bot (`/bot` route) with scenario context, streaming responses, and user feedback learning
-- Avatar system with 5 species (Human, Elf, Demon, Centaur, Fae), male/female variants, scale control (50-200%)
-- Default avatars auto-seeded per user on first access (10 avatars + 10 library items)
+- Avatar system with 6 species (Human, Elf, Dwarf, Demon, Centaur, Fae), male/female variants, scale control (50-200%)
+- Default avatars auto-seeded per user on first access (12 avatars + 12 library character items)
+- 15 default background images auto-seeded per user (forest, city, bedroom, castle, tavern, ocean, mountain, desert, cave, dungeon, village, library, throne room, garden, battlefield)
 - Contacts with invites, media library
 - User profiles with QR code sharing
 
@@ -32,22 +34,37 @@ A messaging application for voice/chat role-play with changing backgrounds, avat
 - `shared/schema.ts` - Database schema (Drizzle)
 - `shared/routes.ts` - API route definitions with Zod validation
 - `server/routes.ts` - Express route handlers
-- `server/storage.ts` - Database storage interface
+- `server/storage.ts` - Database storage interface + seeding logic
 - `server/bot.ts` - AI role-play bot routes (SSE streaming, feedback)
 - `client/src/App.tsx` - Root layout with SidebarProvider and routing
 - `client/src/components/AppSidebar.tsx` - Shadcn Sidebar navigation
 - `client/src/pages/` - React pages (Chats, ChatDetail, BotChat, Scenarios, Library, Contacts, Profile)
-- `client/public/avatars/` - Default avatar images (5 species x 2 genders)
+- `client/public/avatars/` - Default avatar images (6 species x 2 genders)
+- `client/public/backgrounds/` - Default background images (15 scenes)
 
 ## Avatar System
-- 5 species: Human, Elf, Demon, Centaur, Fae
+- 6 species: Human, Elf, Dwarf, Demon, Centaur, Fae
 - Each species has male and female variant images
 - Scale: 50-200% (default 100%), controls avatar size in scene window
 - Avatars table: id, userId, name, imageUrl, species, gender, scale, isDefault
-- Library items table: id, userId, type, name, url, species, gender, isDefault
+- Library items table: id, userId, type (character/background), name, url, species, gender, isDefault
 - Auto-seeded on first GET /api/avatars or GET /api/library call
+- Avatar and background seeding are independent (existing users get backgrounds added without re-seeding avatars)
 - Ownership verified on update/delete routes
 - Scene window in ChatDetail renders first 3 default avatars with scale-based sizing
+
+## Background System
+- 15 default backgrounds: forest, city, bedroom, castle, tavern, ocean, mountain, desert, cave, dungeon, village, library, throne-room, garden, battlefield
+- Stored in client/public/backgrounds/ as PNG files
+- Auto-seeded as library items (type: "background") per user
+- ChatDetail scene window picks a default background based on chatId when no scenario background is set
+- Users can upload their own backgrounds via the Library page
+
+## Scenario System
+- 8 pre-made default scenarios auto-seeded on first GET /api/scenarios
+- Scenarios are public and available to all users
+- Each scenario has title, description, genre, and maturity rating
+- Users can create their own scenarios via the Scenarios page
 
 ## Bot System
 - Bot user ID: "rp-bot"
@@ -56,10 +73,9 @@ A messaging application for voice/chat role-play with changing backgrounds, avat
 - Ownership verified before message injection
 
 ## Recent Changes
-- Added default avatar system with 5 species, male/female variants, and scale control
-- Auto-seeding of 10 default avatars + library items per user
-- Library page redesigned: Characters tab shows avatar cards with species/gender badges and scale slider
-- Scene window updated to show full-body character avatars from avatar system
-- Ownership checks on all avatar/library update/delete routes
-- Major UI overhaul: migrated from purple fantasy theme to clean Discord/iMessage style
-- Replaced custom Navigation with Shadcn Sidebar primitives
+- Added Dwarf species (male/female) to avatar system (now 6 species, 12 avatars)
+- Generated 15 default background images for the library
+- Added default background seeding per user (independent of avatar seeding)
+- Created 8 pre-made default scenarios with seeding on first access
+- Scene window now shows default background from library instead of plain gradient
+- Seeding logic separated: avatars and backgrounds seed independently to handle existing users

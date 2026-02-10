@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useChat, useChatMessages, useSendMessage } from "@/hooks/use-chats";
 import { useAuth } from "@/hooks/use-auth";
-import { useAvatars } from "@/hooks/use-social";
+import { useAvatars, useLibrary } from "@/hooks/use-social";
 import { useVoiceRecorder } from "@/replit_integrations/audio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ export default function ChatDetail() {
   const { data: messages, isLoading } = useChatMessages(chatId);
   const sendMessage = useSendMessage(chatId);
   const { data: myAvatars } = useAvatars();
+  const { data: libraryItems } = useLibrary();
   
   const [inputText, setInputText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -63,6 +64,11 @@ export default function ChatDetail() {
   };
 
   const sceneBackground = (chat as any)?.scene?.backgroundImageUrl || null;
+  const defaultBackgrounds = libraryItems?.filter(i => i.type === "background" && i.isDefault) || [];
+  const fallbackBg = defaultBackgrounds.length > 0
+    ? defaultBackgrounds[chatId % defaultBackgrounds.length]?.url
+    : null;
+  const displayBackground = sceneBackground || fallbackBg;
   const participants = (chat as any)?.participants || [];
   const gradientIndex = chatId % DEFAULT_SCENE_COLORS.length;
 
@@ -82,8 +88,8 @@ export default function ChatDetail() {
       </header>
 
       <div className="relative shrink-0 h-44 overflow-hidden scene-fade" data-testid="scene-window">
-        {sceneBackground ? (
-          <img src={sceneBackground} alt="Scene" className="w-full h-full object-cover transition-all duration-1000" />
+        {displayBackground ? (
+          <img src={displayBackground} alt="Scene" className="w-full h-full object-cover transition-all duration-1000" />
         ) : (
           <div className={cn("w-full h-full bg-gradient-to-br", DEFAULT_SCENE_COLORS[gradientIndex])} />
         )}
