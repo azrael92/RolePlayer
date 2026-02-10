@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -50,6 +50,13 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const BOT_USER_ID = "rp-bot";
 
+const AVATAR_FRAMES = [
+  { transform: "scaleX(1) rotate(0deg) translateY(0px)", filter: "brightness(1)" },
+  { transform: "scaleX(1) rotate(-1.5deg) translateY(-2px) scale(1.02)", filter: "brightness(1.03)" },
+  { transform: "scaleX(-1) rotate(0.5deg) translateY(-1px) scale(1.01)", filter: "brightness(0.98)" },
+  { transform: "scaleX(1) rotate(1deg) translateY(-3px) scale(1.03)", filter: "brightness(1.02)" },
+];
+
 interface BotMessage {
   id: number;
   chatId: number;
@@ -83,7 +90,7 @@ export default function BotChat() {
     queryKey: ["/api/chats"],
     select: (data: any[]) =>
       data?.filter(
-        (c: any) => c.type === "direct" && (c.title?.includes("Bot") || c.title?.includes("Role-Play"))
+        (c: any) => c.type === "direct" && (c.title?.includes("Bot") || c.title?.includes("Role-Play") || c.title?.includes("Roleplay"))
       ) || [],
   });
 
@@ -108,6 +115,12 @@ export default function BotChat() {
     ? defaultBackgrounds[chatId % defaultBackgrounds.length]?.url
     : "/backgrounds/forest.png";
   const displayBackground = chatBackground || fallbackBg;
+
+  const myMessageCount = useMemo(() => messages.filter(m => m.senderId !== BOT_USER_ID).length, [messages]);
+  const botMessageCount = useMemo(() => messages.filter(m => m.senderId === BOT_USER_ID).length, [messages]);
+
+  const myFrameIndex = myMessageCount % AVATAR_FRAMES.length;
+  const botFrameIndex = (botMessageCount + (streamingText ? 1 : 0)) % AVATAR_FRAMES.length;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -198,9 +211,6 @@ export default function BotChat() {
               if (data.done) {
                 setStreamingText("");
                 setIsStreaming(false);
-                if (data.directive) {
-                  queryClient.invalidateQueries({ queryKey: ["/api/chats", chatId] });
-                }
                 queryClient.invalidateQueries({ queryKey: ["/api/chats", chatId] });
               }
               if (data.error) { setStreamingText(""); setIsStreaming(false); }
@@ -288,245 +298,294 @@ export default function BotChat() {
     );
   }
 
+  const lastSender = messages.length > 0 ? messages[messages.length - 1].senderId : null;
+  const isBotSpeaking = lastSender === BOT_USER_ID || isStreaming;
+  const isMeSpeaking = lastSender !== BOT_USER_ID && lastSender !== null && !isStreaming;
+
   return (
-    <div className="flex flex-col h-full relative" data-testid="bot-chat-view">
-      <div className="relative flex-1 min-h-0 flex flex-col">
-        <div className="absolute inset-0 z-0" data-testid="scene-window">
-          {displayBackground ? (
+    <div className="flex flex-col h-full relative overflow-hidden" data-testid="bot-chat-view">
+      <div className="absolute inset-0 z-0" data-testid="scene-window">
+        {displayBackground ? (
+          <img
+            src={displayBackground}
+            alt="Scene background"
+            className="w-full h-full object-cover transition-all duration-1000"
+            data-testid="scene-background-img"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
+      </div>
+
+      <div className="absolute left-0 right-0 z-[15] pointer-events-none flex items-end justify-center gap-8 px-8" style={{ bottom: "50%" }} data-testid="avatar-stage">
+        {myAvatar && (
+          <div
+            className="relative transition-all duration-700 ease-in-out"
+            style={{
+              height: `${(myAvatar.scale || 100) * 1.8}px`,
+              width: `${(myAvatar.scale || 100) * 1.1}px`,
+              ...AVATAR_FRAMES[myFrameIndex],
+              transition: "transform 0.7s ease-in-out, filter 0.7s ease-in-out",
+            }}
+            data-testid="scene-avatar-me"
+          >
             <img
-              src={displayBackground}
-              alt="Scene background"
-              className="w-full h-full object-cover transition-all duration-1000"
-              data-testid="scene-background-img"
+              src={myAvatar.imageUrl}
+              alt={myAvatar.name}
+              className="w-full h-full object-contain object-bottom drop-shadow-[0_4px_20px_rgba(0,0,0,0.7)]"
+              style={{
+                maskImage: "radial-gradient(ellipse 80% 90% at 50% 45%, black 40%, transparent 72%)",
+                WebkitMaskImage: "radial-gradient(ellipse 80% 90% at 50% 45%, black 40%, transparent 72%)",
+              }}
             />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-background" />
-        </div>
+            {isMeSpeaking && (
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary/80 animate-pulse" />
+            )}
+          </div>
+        )}
+        {botAvatar && (
+          <div
+            className="relative transition-all duration-700 ease-in-out"
+            style={{
+              height: `${(botAvatar.scale || 100) * 1.8}px`,
+              width: `${(botAvatar.scale || 100) * 1.1}px`,
+              ...AVATAR_FRAMES[botFrameIndex],
+              transition: "transform 0.7s ease-in-out, filter 0.7s ease-in-out",
+            }}
+            data-testid="scene-avatar-bot"
+          >
+            <img
+              src={botAvatar.imageUrl}
+              alt={botAvatar.name}
+              className="w-full h-full object-contain object-bottom drop-shadow-[0_4px_20px_rgba(0,0,0,0.7)]"
+              style={{
+                maskImage: "radial-gradient(ellipse 80% 90% at 50% 45%, black 40%, transparent 72%)",
+                WebkitMaskImage: "radial-gradient(ellipse 80% 90% at 50% 45%, black 40%, transparent 72%)",
+              }}
+            />
+            {isBotSpeaking && (
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary/80 animate-pulse" />
+            )}
+          </div>
+        )}
+        {!myAvatar && !botAvatar && (
+          <>
+            <div className="mb-3">
+              <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg">
+                <AvatarFallback className="text-lg bg-secondary">{(user as any)?.username?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback>
+              </Avatar>
+            </div>
+            <div className="mb-3">
+              <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg">
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                  <Bot className="w-6 h-6" />
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </>
+        )}
+      </div>
 
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 px-3 py-2 bg-black/30 backdrop-blur-sm" data-testid="bot-chat-header">
-          <SidebarTrigger data-testid="button-sidebar-toggle" className="text-white" />
-          <Button size="icon" variant="ghost" onClick={() => navigate("/bot")} data-testid="button-back-bot-list" className="text-white hover:bg-white/10">
-            <ArrowLeft className="w-4 h-4" />
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 px-3 py-2 bg-black/40 backdrop-blur-sm" data-testid="bot-chat-header">
+        <SidebarTrigger data-testid="button-sidebar-toggle" className="text-white" />
+        <Button size="icon" variant="ghost" onClick={() => navigate("/bot")} data-testid="button-back-bot-list" className="text-white hover:bg-white/10">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-semibold truncate text-white" data-testid="text-chat-title">{chatData?.title || "Bot Chat"}</h2>
+          <p className="text-[11px] text-white/60">AI Partner</p>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <Button size="icon" variant="ghost" onClick={() => handleQuickFeedback("positive")} disabled={sendFeedback.isPending} data-testid="button-feedback-positive" className="text-white hover:bg-white/10">
+            <ThumbsUp className="w-4 h-4" />
           </Button>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold truncate text-white" data-testid="text-chat-title">{chatData?.title || "Bot Chat"}</h2>
-            <p className="text-[11px] text-white/60">AI Partner</p>
-          </div>
-          <div className="flex items-center gap-0.5">
-            <Button size="icon" variant="ghost" onClick={() => handleQuickFeedback("positive")} disabled={sendFeedback.isPending} data-testid="button-feedback-positive" className="text-white hover:bg-white/10">
-              <ThumbsUp className="w-4 h-4" />
-            </Button>
-            <Button size="icon" variant="ghost" onClick={() => handleQuickFeedback("negative")} disabled={sendFeedback.isPending} data-testid="button-feedback-negative" className="text-white hover:bg-white/10">
-              <ThumbsDown className="w-4 h-4" />
-            </Button>
-            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <SheetTrigger asChild>
-                <Button size="icon" variant="ghost" data-testid="button-chat-settings" className="text-white hover:bg-white/10">
-                  <Settings2 className="w-4 h-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Scene Settings</SheetTitle>
-                </SheetHeader>
-                <div className="space-y-6 mt-4">
-                  <div>
-                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                      <UserIcon className="w-4 h-4" /> Your Avatar
-                    </h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {myAvatars?.filter((a: any) => a.isDefault).map((avatar: any) => (
-                        <button
-                          key={avatar.id}
-                          className={cn(
-                            "relative rounded-md overflow-visible p-1 transition-all border-2",
-                            myAvatar?.id === avatar.id ? "border-primary" : "border-transparent hover-elevate"
-                          )}
-                          onClick={() => updateMyAvatar.mutate(avatar.id)}
-                          data-testid={`select-avatar-${avatar.id}`}
-                        >
-                          <img src={avatar.imageUrl} alt={avatar.name} className="w-full aspect-square object-contain rounded-md bg-secondary/50" />
-                          <p className="text-[10px] text-center mt-1 truncate text-muted-foreground">{avatar.name}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                      <ImageIcon className="w-4 h-4" /> Background
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {defaultBackgrounds.map((bg: any) => (
-                        <button
-                          key={bg.id}
-                          className={cn(
-                            "relative rounded-md overflow-visible transition-all border-2",
-                            displayBackground === bg.url ? "border-primary" : "border-transparent hover-elevate"
-                          )}
-                          onClick={() => updateBackground.mutate(bg.url)}
-                          data-testid={`select-bg-${bg.id}`}
-                        >
-                          <img src={bg.url} alt={bg.name} className="w-full aspect-video object-cover rounded-md" />
-                          <p className="text-[10px] text-center mt-1 truncate text-muted-foreground">{bg.name}</p>
-                        </button>
-                      ))}
-                    </div>
+          <Button size="icon" variant="ghost" onClick={() => handleQuickFeedback("negative")} disabled={sendFeedback.isPending} data-testid="button-feedback-negative" className="text-white hover:bg-white/10">
+            <ThumbsDown className="w-4 h-4" />
+          </Button>
+          <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="ghost" data-testid="button-chat-settings" className="text-white hover:bg-white/10">
+                <Settings2 className="w-4 h-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Scene Settings</SheetTitle>
+              </SheetHeader>
+              <div className="space-y-6 mt-4">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                    <UserIcon className="w-4 h-4" /> Your Avatar
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {myAvatars?.filter((a: any) => a.isDefault).map((avatar: any) => (
+                      <button
+                        key={avatar.id}
+                        className={cn(
+                          "relative rounded-md overflow-visible p-1 transition-all border-2",
+                          myAvatar?.id === avatar.id ? "border-primary" : "border-transparent hover-elevate"
+                        )}
+                        onClick={() => updateMyAvatar.mutate(avatar.id)}
+                        data-testid={`select-avatar-${avatar.id}`}
+                      >
+                        <img src={avatar.imageUrl} alt={avatar.name} className="w-full aspect-square object-contain rounded-md bg-secondary/50" />
+                        <p className="text-[10px] text-center mt-1 truncate text-muted-foreground">{avatar.name}</p>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </SheetContent>
-            </Sheet>
-            <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
-              <DialogTrigger asChild>
-                <Button size="icon" variant="ghost" data-testid="button-feedback-detail" className="text-white hover:bg-white/10">
-                  <Palette className="w-4 h-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Give Feedback</DialogTitle></DialogHeader>
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">Tell the bot how to improve. Preferences are remembered across sessions.</p>
-                  <Textarea placeholder="e.g. Be more descriptive, use shorter responses..." value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} data-testid="input-feedback-text" />
-                  <Button onClick={() => sendFeedback.mutate({ feedback: feedbackText, chatId: chatId || undefined })} disabled={!feedbackText.trim() || sendFeedback.isPending} className="w-full" data-testid="button-submit-feedback">
-                    {sendFeedback.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                    Send Feedback
-                  </Button>
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                    <ImageIcon className="w-4 h-4" /> Background
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {defaultBackgrounds.map((bg: any) => (
+                      <button
+                        key={bg.id}
+                        className={cn(
+                          "relative rounded-md overflow-visible transition-all border-2",
+                          displayBackground === bg.url ? "border-primary" : "border-transparent hover-elevate"
+                        )}
+                        onClick={() => updateBackground.mutate(bg.url)}
+                        data-testid={`select-bg-${bg.id}`}
+                      >
+                        <img src={bg.url} alt={bg.name} className="w-full aspect-video object-cover rounded-md" />
+                        <p className="text-[10px] text-center mt-1 truncate text-muted-foreground">{bg.name}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+            <DialogTrigger asChild>
+              <Button size="icon" variant="ghost" data-testid="button-feedback-detail" className="text-white hover:bg-white/10">
+                <Palette className="w-4 h-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Give Feedback</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Tell the bot how to improve. Preferences are remembered across sessions.</p>
+                <Textarea placeholder="e.g. Be more descriptive, use shorter responses..." value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} data-testid="input-feedback-text" />
+                <Button onClick={() => sendFeedback.mutate({ feedback: feedbackText, chatId: chatId || undefined })} disabled={!feedbackText.trim() || sendFeedback.isPending} className="w-full" data-testid="button-submit-feedback">
+                  {sendFeedback.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                  Send Feedback
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
+      </div>
 
-        <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none" style={{ height: "60%" }}>
-          <div className="absolute inset-0 flex items-end justify-center gap-6 px-8 pb-4">
-            {myAvatar && (
-              <div
-                className="relative transition-all duration-500"
-                style={{ height: `${(myAvatar.scale || 100) * 1.6}px`, width: `${(myAvatar.scale || 100) * 0.96}px` }}
-                data-testid="scene-avatar-me"
-              >
-                <img
-                  src={myAvatar.imageUrl}
-                  alt={myAvatar.name}
-                  className="w-full h-full object-contain object-bottom drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
-                />
-              </div>
-            )}
-            {botAvatar && (
-              <div
-                className="relative transition-all duration-500"
-                style={{ height: `${(botAvatar.scale || 100) * 1.6}px`, width: `${(botAvatar.scale || 100) * 0.96}px` }}
-                data-testid="scene-avatar-bot"
-              >
-                <img
-                  src={botAvatar.imageUrl}
-                  alt={botAvatar.name}
-                  className="w-full h-full object-contain object-bottom drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
-                />
-              </div>
-            )}
-            {!myAvatar && !botAvatar && (
+      <div
+        className="absolute bottom-0 left-0 right-0 z-10 flex flex-col overflow-hidden"
+        style={{ maxHeight: "50%" }}
+      >
+        <div
+          className="overflow-y-auto px-4 pt-6 pb-0 space-y-3"
+          ref={scrollRef}
+          data-testid="bot-messages"
+          style={{
+            flex: "1 1 auto",
+            minHeight: 0,
+            maskImage: "linear-gradient(to bottom, transparent 0%, black 16px, black 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 16px, black 100%)",
+          }}
+        >
+          <div className="rounded-xl bg-black/40 backdrop-blur-md p-3 space-y-3">
+            {chatLoading ? (
+              <div className="flex justify-center pt-4"><Loader2 className="w-6 h-6 animate-spin text-white/60" /></div>
+            ) : (
               <>
-                <div className="mb-3">
-                  <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg">
-                    <AvatarFallback className="text-lg bg-secondary">{(user as any)?.username?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="mb-3">
-                  <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                      <Bot className="w-6 h-6" />
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
+                {messages.map((msg) => {
+                  const isBot = msg.senderId === BOT_USER_ID;
+                  return (
+                    <div key={msg.id} className={cn("flex gap-2.5 max-w-lg", isBot ? "" : "ml-auto flex-row-reverse")} data-testid={`message-${msg.id}`}>
+                      {isBot && (
+                        <Avatar className="w-7 h-7 shrink-0 mt-0.5">
+                          {botAvatar ? (
+                            <AvatarImage src={botAvatar.imageUrl} />
+                          ) : null}
+                          <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                            <Bot className="w-3.5 h-3.5" />
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div className={cn("flex flex-col gap-0.5", isBot ? "items-start" : "items-end")}>
+                        {isBot && <span className="text-[11px] text-white/60 font-medium ml-1">{botAvatar?.name || "Bot"}</span>}
+                        <div className={cn(
+                          "px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap",
+                          isBot ? "bg-white/10 text-white/90 rounded-bl-md" : "bg-primary text-primary-foreground rounded-br-md"
+                        )}>
+                          {msg.content}
+                        </div>
+                        <span className="text-[10px] text-white/40 mx-1">
+                          {msg.createdAt && format(new Date(msg.createdAt), "h:mm a")}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {streamingText && (
+                  <div className="flex gap-2.5 max-w-lg">
+                    <Avatar className="w-7 h-7 shrink-0 mt-0.5">
+                      {botAvatar ? <AvatarImage src={botAvatar.imageUrl} /> : null}
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs"><Bot className="w-3.5 h-3.5" /></AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col gap-0.5 items-start">
+                      <span className="text-[11px] text-white/60 font-medium ml-1">{botAvatar?.name || "Bot"}</span>
+                      <div className="px-3 py-2 rounded-2xl rounded-bl-md text-sm leading-relaxed bg-white/10 text-white/90 whitespace-pre-wrap">
+                        {streamingText}
+                        <span className="inline-block w-1 h-3.5 bg-white/40 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isStreaming && !streamingText && (
+                  <div className="flex gap-2.5 max-w-lg">
+                    <Avatar className="w-7 h-7 shrink-0 mt-0.5">
+                      {botAvatar ? <AvatarImage src={botAvatar.imageUrl} /> : null}
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs"><Bot className="w-3.5 h-3.5" /></AvatarFallback>
+                    </Avatar>
+                    <div className="px-3 py-2.5 rounded-2xl rounded-bl-md bg-white/10">
+                      <div className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" />
+                        <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
+                        <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
         </div>
-      </div>
 
-      <div className="relative z-20 flex flex-col bg-background" style={{ maxHeight: "45%" }}>
-        <div
-          className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
-          ref={scrollRef}
-          data-testid="bot-messages"
-        >
-          {chatLoading ? (
-            <div className="flex justify-center pt-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-          ) : (
-            <>
-              {messages.map((msg) => {
-                const isBot = msg.senderId === BOT_USER_ID;
-                return (
-                  <div key={msg.id} className={cn("flex gap-2.5 max-w-lg", isBot ? "" : "ml-auto flex-row-reverse")} data-testid={`message-${msg.id}`}>
-                    {isBot && (
-                      <Avatar className="w-7 h-7 shrink-0 mt-0.5">
-                        {botAvatar ? (
-                          <AvatarImage src={botAvatar.imageUrl} />
-                        ) : null}
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                          <Bot className="w-3.5 h-3.5" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div className={cn("flex flex-col gap-0.5", isBot ? "items-start" : "items-end")}>
-                      {isBot && <span className="text-[11px] text-muted-foreground font-medium ml-1">{botAvatar?.name || "Bot"}</span>}
-                      <div className={cn(
-                        "px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap",
-                        isBot ? "bg-secondary text-secondary-foreground rounded-bl-md" : "bg-primary text-primary-foreground rounded-br-md"
-                      )}>
-                        {msg.content}
-                      </div>
-                      <span className="text-[10px] text-muted-foreground/60 mx-1">
-                        {msg.createdAt && format(new Date(msg.createdAt), "h:mm a")}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {streamingText && (
-                <div className="flex gap-2.5 max-w-lg">
-                  <Avatar className="w-7 h-7 shrink-0 mt-0.5">
-                    {botAvatar ? <AvatarImage src={botAvatar.imageUrl} /> : null}
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs"><Bot className="w-3.5 h-3.5" /></AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col gap-0.5 items-start">
-                    <span className="text-[11px] text-muted-foreground font-medium ml-1">{botAvatar?.name || "Bot"}</span>
-                    <div className="px-3 py-2 rounded-2xl rounded-bl-md text-sm leading-relaxed bg-secondary text-secondary-foreground whitespace-pre-wrap">
-                      {streamingText}
-                      <span className="inline-block w-1 h-3.5 bg-foreground/40 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {isStreaming && !streamingText && (
-                <div className="flex gap-2.5 max-w-lg">
-                  <Avatar className="w-7 h-7 shrink-0 mt-0.5">
-                    {botAvatar ? <AvatarImage src={botAvatar.imageUrl} /> : null}
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs"><Bot className="w-3.5 h-3.5" /></AvatarFallback>
-                  </Avatar>
-                  <div className="px-3 py-2.5 rounded-2xl rounded-bl-md bg-secondary">
-                    <div className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" />
-                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
-                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        <div className="px-4 py-3 border-t bg-card/50 shrink-0" data-testid="chat-input-area">
+        <div className="px-4 py-3 bg-black/50 backdrop-blur-md shrink-0" data-testid="chat-input-area">
           <div className="flex items-center gap-2 max-w-4xl mx-auto">
-            <div className="flex-1 flex items-center bg-secondary rounded-full px-3">
-              <Input className="bg-transparent border-none focus-visible:ring-0 h-10 text-sm" placeholder="Message..." value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={handleKeyDown} disabled={isStreaming} data-testid="input-bot-message" />
+            <div className="flex-1 flex items-center bg-white/10 rounded-full px-3">
+              <Input
+                className="bg-transparent border-none focus-visible:ring-0 h-10 text-sm text-white placeholder:text-white/40"
+                placeholder="Message..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={isStreaming}
+                data-testid="input-bot-message"
+              />
             </div>
-            <Button size="icon" className="rounded-full shrink-0" onClick={handleSend} disabled={!inputText.trim() || isStreaming} data-testid="button-send-bot">
+            <Button
+              size="icon"
+              className="rounded-full shrink-0"
+              onClick={handleSend}
+              disabled={!inputText.trim() || isStreaming}
+              data-testid="button-send-bot"
+            >
               {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>

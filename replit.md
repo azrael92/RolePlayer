@@ -79,7 +79,9 @@ A messaging application for voice/chat role-play with changing backgrounds, avat
 - Feedback stored per-user in memory, injected into system prompt
 
 ## Recent Changes
-- **Immersive chat layout**: Scene window now dominates the upper portion of chat view with full background + avatars; messages below
+- **Visual novel layout**: Scene fills entire viewport; avatars positioned in upper half with CSS radial-gradient masks for transparent-edge blending; messages overlay bottom 50% in frosted-glass scrollable container
+- **Avatar frame system**: 4 CSS transform variants (rotation, translation, scale, flip) cycle per message per participant, creating visual-novel speaking animations; pulsing indicator shows active speaker
+- **Fixed avatar positioning**: Avatars anchored at 50% viewport height; messages scroll within their overlay without pushing avatars upward
 - **Per-chat visuals**: Each chat stores backgroundUrl and participant avatar assignments
 - **Chat settings panel**: Sheet component in BotChat and ChatDetail for swapping avatar/background from library
 - **Bot auto-assignment**: Bot start auto-assigns default avatars and random background
