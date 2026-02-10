@@ -68,6 +68,7 @@ export const chats = pgTable("chats", {
   currentSceneId: integer("current_scene_id").references(() => scenes.id),
   title: text("title"),
   type: text("type").default("direct"),
+  backgroundUrl: text("background_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -77,6 +78,7 @@ export const chatParticipants = pgTable("chat_participants", {
   chatId: integer("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id),
   role: text("role").default("member"),
+  avatarId: integer("avatar_id"),
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
