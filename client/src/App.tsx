@@ -42,6 +42,7 @@ function AuthenticatedLayout() {
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <Switch>
+            <Route path="/">{() => { window.location.replace("/chats"); return null; }}</Route>
             <Route path="/chats"><ProtectedRoute component={Chats} /></Route>
             <Route path="/chats/:id"><ProtectedRoute component={ChatDetail} /></Route>
             <Route path="/scenarios"><ProtectedRoute component={Scenarios} /></Route>
