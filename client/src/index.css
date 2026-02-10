@@ -1,43 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: 260 20% 10%;
-  --foreground: 260 10% 95%;
+  --background: 220 13% 10%;
+  --foreground: 210 11% 93%;
 
-  --card: 260 20% 15%;
-  --card-foreground: 260 10% 95%;
+  --card: 220 13% 13%;
+  --card-foreground: 210 11% 93%;
 
-  --popover: 260 20% 12%;
-  --popover-foreground: 260 10% 95%;
+  --popover: 220 13% 12%;
+  --popover-foreground: 210 11% 93%;
 
-  --primary: 270 70% 60%;
-  --primary-foreground: 260 10% 95%;
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 260 30% 20%;
-  --secondary-foreground: 260 10% 95%;
+  --secondary: 220 13% 18%;
+  --secondary-foreground: 210 11% 85%;
 
-  --muted: 260 30% 20%;
-  --muted-foreground: 260 10% 60%;
+  --muted: 220 13% 18%;
+  --muted-foreground: 215 10% 55%;
 
-  --accent: 300 70% 50%;
-  --accent-foreground: 0 0% 100%;
+  --accent: 220 13% 22%;
+  --accent-foreground: 210 11% 93%;
 
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 260 10% 95%;
+  --destructive: 0 63% 45%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 260 30% 25%;
-  --input: 260 30% 25%;
-  --ring: 270 70% 60%;
+  --border: 220 13% 20%;
+  --input: 220 13% 20%;
+  --ring: 211 100% 50%;
 
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  --font-display: 'Cinzel', serif;
-  --font-body: 'Inter', sans-serif;
-  --font-serif: 'Playfair Display', serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --sidebar-background: 220 13% 9%;
+  --sidebar-foreground: 210 11% 85%;
+  --sidebar-border: 220 13% 16%;
+  --sidebar-accent: 220 13% 16%;
+  --sidebar-accent-foreground: 210 11% 93%;
+  --sidebar-primary: 211 100% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-ring: 211 100% 50%;
 }
 
 @layer base {
@@ -49,38 +56,40 @@
     font-family: var(--font-body);
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    @apply tracking-tight;
+    font-family: var(--font-body);
+    @apply font-semibold tracking-tight;
   }
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted rounded-full hover:bg-muted-foreground/50 transition-colors;
+  @apply bg-muted-foreground/20 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/40;
 }
 
-/* Glassmorphism utilities */
-.glass {
-  @apply bg-black/40 backdrop-blur-md border border-white/10;
+.scene-fade {
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
 }
 
-.glass-card {
-  @apply bg-card/60 backdrop-blur-sm border border-white/5 shadow-xl;
+.chat-fade-top {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 40px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 40px);
 }
 
-/* Animation utilities */
 .animate-in-fade {
-  animation: fadeIn 0.5s ease-out forwards;
+  animation: fadeIn 0.3s ease-out forwards;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }

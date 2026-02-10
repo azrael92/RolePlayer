@@ -1,13 +1,12 @@
-import { Navigation } from "@/components/Navigation";
 import { useContacts, useInviteContact } from "@/hooks/use-social";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Loader2 } from "lucide-react";
+import { UserPlus, Loader2, Users } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function Contacts() {
   const { data: contacts, isLoading } = useContacts();
@@ -18,84 +17,70 @@ export default function Contacts() {
   const handleInvite = () => {
     if (!inviteUsername) return;
     invite.mutate({ username: inviteUsername }, {
-      onSuccess: () => {
-        toast({ title: "Invite sent", description: `Sent friend request to ${inviteUsername}` });
-        setInviteUsername("");
-      },
-      onError: (err) => {
-        toast({ title: "Error", description: err.message, variant: "destructive" });
-      }
+      onSuccess: () => { toast({ title: "Invite sent" }); setInviteUsername(""); },
+      onError: (err) => { toast({ title: "Error", description: err.message, variant: "destructive" }); }
     });
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Navigation />
-      
-      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold">Contacts</h1>
-            <p className="text-muted-foreground mt-1">Connect with other roleplayers</p>
-          </div>
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-3 px-4 h-12 border-b bg-card/50 shrink-0">
+        <SidebarTrigger data-testid="button-sidebar-toggle" />
+        <h1 className="text-sm font-semibold" data-testid="text-contacts-title">Contacts</h1>
+      </header>
 
-          <Card className="p-6 glass-card">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" /> Add Contact
-            </h2>
-            <div className="flex gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Enter username..." 
-                  className="pl-10"
-                  value={inviteUsername}
-                  onChange={e => setInviteUsername(e.target.value)}
-                />
-              </div>
-              <Button onClick={handleInvite} disabled={invite.isPending}>
-                {invite.isPending ? "Sending..." : "Send Invite"}
-              </Button>
-            </div>
-          </Card>
-
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Your Friends</h2>
-            {isLoading ? (
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-            ) : (
-              <div className="grid gap-4">
-                {contacts?.map(({ contact, status }) => (
-                  <div key={contact.id} className="flex items-center justify-between p-4 rounded-xl bg-card/50 border border-white/5 hover:border-primary/20 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarImage src={contact.profileImageUrl || undefined} />
-                        <AvatarFallback>{contact.username?.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{contact.username}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {status === 'pending' ? 'Request Pending' : 'Online'}
-                        </div>
-                      </div>
-                    </div>
-                    {status === 'pending' ? (
-                      <Badge variant="secondary">Pending</Badge>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">Message</Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {contacts?.length === 0 && (
-                  <p className="text-center py-8 text-muted-foreground">No contacts yet.</p>
-                )}
-              </div>
-            )}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 border-b">
+          <div className="flex gap-2 max-w-lg">
+            <Input 
+              placeholder="Add by username..." 
+              className="text-sm bg-secondary border-none"
+              value={inviteUsername}
+              onChange={e => setInviteUsername(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleInvite()}
+              data-testid="input-invite-username"
+            />
+            <Button onClick={handleInvite} disabled={invite.isPending} data-testid="button-send-invite">
+              <UserPlus className="w-4 h-4 mr-1.5" />
+              {invite.isPending ? "..." : "Add"}
+            </Button>
           </div>
         </div>
-      </main>
+
+        <div className="p-2">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2">
+            Friends {contacts?.length ? `(${contacts.length})` : ""}
+          </p>
+          
+          {isLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="space-y-0.5">
+              {contacts?.map(({ contact, status }: any) => (
+                <div key={contact.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent/50 transition-colors" data-testid={`contact-${contact.id}`}>
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={contact.profileImageUrl || undefined} />
+                    <AvatarFallback className="text-xs bg-secondary">{contact.username?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{contact.username}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {status === "pending" ? "Pending" : "Online"}
+                    </p>
+                  </div>
+                  {status === "pending" && <Badge variant="secondary" className="text-[10px]">Pending</Badge>}
+                </div>
+              ))}
+              {contacts?.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No contacts yet</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
