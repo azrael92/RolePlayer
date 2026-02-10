@@ -8,7 +8,8 @@ import {
   LogOut, 
   Image as ImageIcon,
   ScrollText,
-  Loader2
+  Loader2,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ export function Navigation() {
 
   const navItems = [
     { href: "/chats", icon: MessageSquare, label: "Chats" },
+    { href: "/bot", icon: Bot, label: "Bot" },
     { href: "/scenarios", icon: ScrollText, label: "Scenarios" },
     { href: "/library", icon: ImageIcon, label: "Library" },
     { href: "/contacts", icon: Users, label: "Contacts" },

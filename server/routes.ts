@@ -5,6 +5,7 @@ import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerAudioRoutes } from "./replit_integrations/audio";
 import { registerImageRoutes } from "./replit_integrations/image";
+import { registerBotRoutes } from "./bot";
 import { api } from "@shared/routes";
 import { z } from "zod";
 
@@ -19,6 +20,7 @@ export async function registerRoutes(
   // 2. Register Integration Routes
   registerAudioRoutes(app); // Voice chat API
   registerImageRoutes(app); // Image generation
+  registerBotRoutes(app);   // Role-play bot
 
   // 3. App Routes
 

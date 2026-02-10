@@ -11,6 +11,7 @@ import Scenarios from "@/pages/Scenarios";
 import Library from "@/pages/Library";
 import Contacts from "@/pages/Contacts";
 import Profile from "@/pages/Profile";
+import BotChat from "@/pages/BotChat";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -45,6 +46,12 @@ function Router() {
       </Route>
       <Route path="/contacts">
         <ProtectedRoute component={Contacts} />
+      </Route>
+      <Route path="/bot">
+        <ProtectedRoute component={BotChat} />
+      </Route>
+      <Route path="/bot/:id">
+        <ProtectedRoute component={BotChat} />
       </Route>
       <Route path="/profile">
         <ProtectedRoute component={Profile} />
