@@ -34,6 +34,13 @@ async function getBotReady() {
   }
 }
 
+const AVAILABLE_SPECIES = ["human", "elf", "dwarf", "demon", "centaur", "fae"];
+const AVAILABLE_BACKGROUNDS = [
+  "forest", "city", "bedroom", "castle", "tavern", "ocean",
+  "mountain", "desert", "cave", "dungeon", "village", "library",
+  "throne-room", "garden", "battlefield"
+];
+
 function buildSystemPrompt(scenario: any, scene: any, feedback: string[]): string {
   let prompt = `You are an immersive role-play partner. Stay in character at all times. Be creative, descriptive, and engaging. Match the tone and style the user sets.`;
 
@@ -61,9 +68,69 @@ function buildSystemPrompt(scenario: any, scene: any, feedback: string[]): strin
 - Use *asterisks* for actions and descriptions
 - Keep responses concise but immersive (2-4 paragraphs typically)
 - React naturally to the user's messages and adapt the story
-- If the user sends an image or describes a visual, incorporate it into the narrative`;
+- If the user sends an image or describes a visual, incorporate it into the narrative
+
+IMPORTANT - Scene Directives:
+When the story context suggests a change in your character's species/form or the scene background, you MUST include a directive block at the very end of your response. The directive is a JSON object on a single line wrapped in <RP_DIRECTIVE> tags.
+
+Available species for avatars: ${AVAILABLE_SPECIES.join(", ")}
+Available backgrounds: ${AVAILABLE_BACKGROUNDS.join(", ")}
+
+Examples of when to emit directives:
+- User says "you transform into a centaur" → change your species to centaur
+- The story moves to a cave → change background to cave
+- User says "you're an elf now" → change your species to elf
+
+Format (place at very end of response, after all story text):
+<RP_DIRECTIVE>{"bot_species":"centaur","bot_gender":"male","background":"cave"}</RP_DIRECTIVE>
+
+Only include fields that should change. Omit fields that stay the same.
+Do NOT include the directive if nothing needs to change visually.`;
 
   return prompt;
+}
+
+function parseDirective(text: string): { cleanText: string; directive: any | null } {
+  const match = text.match(/<RP_DIRECTIVE>([\s\S]*?)<\/RP_DIRECTIVE>/);
+  if (!match) return { cleanText: text, directive: null };
+  try {
+    const directive = JSON.parse(match[1]);
+    const cleanText = text.replace(/<RP_DIRECTIVE>[\s\S]*?<\/RP_DIRECTIVE>/, "").trim();
+    return { cleanText, directive };
+  } catch {
+    return { cleanText: text.replace(/<RP_DIRECTIVE>[\s\S]*?<\/RP_DIRECTIVE>/, "").trim(), directive: null };
+  }
+}
+
+async function applyDirective(directive: any, chatId: number): Promise<any> {
+  const applied: any = {};
+  try {
+    if (directive.bot_species) {
+      const species = directive.bot_species.toLowerCase();
+      const gender = (directive.bot_gender || "male").toLowerCase();
+      if (AVAILABLE_SPECIES.includes(species)) {
+        const botAvatars = await storage.getAvatars(BOT_USER_ID);
+        const match = botAvatars.find(a =>
+          a.species === species && a.gender === gender
+        ) || botAvatars.find(a => a.species === species);
+        if (match) {
+          await storage.updateParticipantAvatar(chatId, BOT_USER_ID, match.id);
+          applied.botAvatar = { id: match.id, species: match.species, gender: match.gender, imageUrl: match.imageUrl, name: match.name };
+        }
+      }
+    }
+    if (directive.background) {
+      const bgName = directive.background.toLowerCase();
+      const bgUrl = `/backgrounds/${bgName}.png`;
+      if (AVAILABLE_BACKGROUNDS.includes(bgName)) {
+        await storage.updateChat(chatId, { backgroundUrl: bgUrl });
+        applied.backgroundUrl = bgUrl;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to apply directive:", err);
+  }
+  return applied;
 }
 
 const userFeedback = new Map<string, string[]>();
@@ -145,18 +212,28 @@ export function registerBotRoutes(app: Express): void {
         const content = chunk.choices[0]?.delta?.content || "";
         if (content) {
           fullResponse += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+          const cleanContent = content.replace(/<RP_DIRECTIVE>[\s\S]*?<\/RP_DIRECTIVE>/g, "");
+          if (cleanContent) {
+            res.write(`data: ${JSON.stringify({ content: cleanContent })}\n\n`);
+          }
         }
       }
+
+      const { cleanText, directive } = parseDirective(fullResponse);
 
       await storage.createChatMessage({
         chatId,
         senderId: BOT_USER_ID,
-        content: fullResponse,
+        content: cleanText,
         type: "text",
       });
 
-      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      let appliedDirective = null;
+      if (directive) {
+        appliedDirective = await applyDirective(directive, chatId);
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true, directive: appliedDirective })}\n\n`);
       res.end();
     } catch (error) {
       console.error("Bot chat error:", error);
@@ -179,14 +256,34 @@ export function registerBotRoutes(app: Express): void {
       const userId = user.claims.sub;
       const { scenarioId, title } = req.body;
 
+      await storage.seedDefaultAvatars(userId);
+      await storage.seedDefaultAvatars(BOT_USER_ID);
+
+      const userAvatars = await storage.getAvatars(userId);
+      const botAvatars = await storage.getAvatars(BOT_USER_ID);
+      const userDefaultAvatar = userAvatars.find(a => a.isDefault) || userAvatars[0];
+      const botDefaultAvatar = botAvatars.find(a => a.isDefault) || botAvatars[0];
+
+      const userBgs = await storage.getLibraryItems(userId);
+      const defaultBgs = userBgs.filter(i => i.type === "background" && i.isDefault);
+      const randomBg = defaultBgs.length > 0 ? defaultBgs[Math.floor(Math.random() * defaultBgs.length)] : null;
+
       const chat = await storage.createChat({
         title: title || "Bot Role-Play",
         scenarioId: scenarioId || null,
         type: "direct",
+        backgroundUrl: randomBg?.url || "/backgrounds/forest.png",
       });
 
       await storage.addChatParticipant(chat.id, userId, "admin");
       await storage.addChatParticipant(chat.id, BOT_USER_ID, "bot");
+
+      if (userDefaultAvatar) {
+        await storage.updateParticipantAvatar(chat.id, userId, userDefaultAvatar.id);
+      }
+      if (botDefaultAvatar) {
+        await storage.updateParticipantAvatar(chat.id, BOT_USER_ID, botDefaultAvatar.id);
+      }
 
       let greeting = "*The scene begins to take shape around you...*\n\nHello! I'm your role-play partner. ";
       if (scenarioId) {

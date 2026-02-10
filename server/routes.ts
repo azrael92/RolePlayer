@@ -103,6 +103,32 @@ export async function registerRoutes(
     res.json({ ...chat, participants, messages });
   });
 
+  app.patch("/api/chats/:id/visuals", async (req, res) => {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const chatId = Number(req.params.id);
+    const participants = await storage.getChatParticipants(chatId);
+    const isParticipant = participants.some((p: any) => p.participant?.userId === user.claims.sub);
+    if (!isParticipant) return res.status(403).json({ message: "Not a participant" });
+    const { backgroundUrl } = req.body;
+    const updated = await storage.updateChat(chatId, { backgroundUrl });
+    res.json(updated);
+  });
+
+  app.patch("/api/chats/:id/participants/:userId/avatar", async (req, res) => {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const chatId = Number(req.params.id);
+    const userId = req.params.userId;
+    const participants = await storage.getChatParticipants(chatId);
+    const isParticipant = participants.some((p: any) => p.participant?.userId === user.claims.sub);
+    if (!isParticipant) return res.status(403).json({ message: "Not a participant" });
+    if (userId !== user.claims.sub) return res.status(403).json({ message: "Can only change your own avatar" });
+    const { avatarId } = req.body;
+    await storage.updateParticipantAvatar(chatId, userId, avatarId);
+    res.json({ success: true });
+  });
+
   app.get(api.chats.messages.list.path, async (req, res) => {
     const messages = await storage.getChatMessages(Number(req.params.id));
     res.json(messages);

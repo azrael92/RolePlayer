@@ -22,10 +22,12 @@ export interface IStorage {
   // Chats
   getChats(userId: string): Promise<Chat[]>;
   getChat(id: number): Promise<Chat | undefined>;
-  createChat(chat: { title?: string, scenarioId?: number, currentSceneId?: number }): Promise<Chat>;
+  createChat(chat: { title?: string, scenarioId?: number, currentSceneId?: number, type?: string, backgroundUrl?: string }): Promise<Chat>;
+  updateChat(id: number, updates: Partial<{ backgroundUrl: string | null; title: string }>): Promise<Chat>;
   getChatMessages(chatId: number): Promise<ChatMessage[]>;
   createChatMessage(message: { chatId: number, senderId?: string, content?: string, type: string, fileUrl?: string, audioUrl?: string }): Promise<ChatMessage>;
   addChatParticipant(chatId: number, userId: string, role?: string): Promise<void>;
+  updateParticipantAvatar(chatId: number, userId: string, avatarId: number | null): Promise<void>;
   getChatParticipants(chatId: number): Promise<any[]>;
 
   // Avatars
@@ -104,9 +106,14 @@ export class DatabaseStorage implements IStorage {
     return chat;
   }
 
-  async createChat(chatData: { title?: string, scenarioId?: number, currentSceneId?: number, type?: string }): Promise<Chat> {
+  async createChat(chatData: { title?: string, scenarioId?: number, currentSceneId?: number, type?: string, backgroundUrl?: string }): Promise<Chat> {
     const [chat] = await db.insert(chats).values(chatData).returning();
     return chat;
+  }
+
+  async updateChat(id: number, updates: Partial<{ backgroundUrl: string | null; title: string }>): Promise<Chat> {
+    const [updated] = await db.update(chats).set(updates).where(eq(chats.id, id)).returning();
+    return updated;
   }
 
   async getChatMessages(chatId: number): Promise<ChatMessage[]> {
@@ -122,14 +129,31 @@ export class DatabaseStorage implements IStorage {
     await db.insert(chatParticipants).values({ chatId, userId, role });
   }
 
+  async updateParticipantAvatar(chatId: number, userId: string, avatarId: number | null): Promise<void> {
+    await db.update(chatParticipants)
+      .set({ avatarId })
+      .where(and(eq(chatParticipants.chatId, chatId), eq(chatParticipants.userId, userId)));
+  }
+
   async getChatParticipants(chatId: number): Promise<any[]> {
-    return await db.select({
+    const rows = await db.select({
       participant: chatParticipants,
       user: users
     })
     .from(chatParticipants)
     .innerJoin(users, eq(chatParticipants.userId, users.id))
     .where(eq(chatParticipants.chatId, chatId));
+
+    const results = [];
+    for (const row of rows) {
+      let avatar = null;
+      if (row.participant.avatarId) {
+        const [a] = await db.select().from(avatars).where(eq(avatars.id, row.participant.avatarId));
+        avatar = a || null;
+      }
+      results.push({ ...row, avatar });
+    }
+    return results;
   }
 
   // Avatars
