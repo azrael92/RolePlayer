@@ -11,15 +11,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScenarioSchema } from "@shared/schema";
 import { Loader2, Plus, Play, BookOpen } from "lucide-react";
 import { useState } from "react";
-import { useCreateChat } from "@/hooks/use-chats";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function Scenarios() {
   const { data: scenarios, isLoading } = useScenarios();
   const createScenario = useCreateScenario();
-  const createChat = useCreateChat();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [startingId, setStartingId] = useState<number | null>(null);
   const [, setLocation] = useLocation();
 
   const form = useForm({
@@ -31,10 +33,25 @@ export default function Scenarios() {
     createScenario.mutate(data, { onSuccess: () => { setIsOpen(false); form.reset(); } });
   };
 
+  const startBotChat = useMutation({
+    mutationFn: async (data: { scenarioId: number; title: string }) => {
+      const res = await apiRequest("POST", "/api/bot/start", data);
+      return res.json();
+    },
+    onSuccess: (chat: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
+      setStartingId(null);
+      setLocation(`/bot/${chat.id}`);
+    },
+    onError: () => {
+      setStartingId(null);
+    },
+  });
+
   const handleStartChat = (scenarioId: number) => {
-    createChat.mutate({ scenarioId, participantIds: [], title: `Roleplay: ${scenarios?.find(s => s.id === scenarioId)?.title}` }, {
-      onSuccess: (chat) => setLocation(`/chats/${chat.id}`)
-    });
+    const scenario = scenarios?.find(s => s.id === scenarioId);
+    setStartingId(scenarioId);
+    startBotChat.mutate({ scenarioId, title: scenario ? `Bot: ${scenario.title}` : "Bot Role-Play" });
   };
 
   return (
@@ -102,8 +119,9 @@ export default function Scenarios() {
                     {scenario.genre && <Badge variant="secondary" className="text-[10px]">{scenario.genre}</Badge>}
                     {scenario.maturityRating && <Badge variant="outline" className="text-[10px]">{scenario.maturityRating}</Badge>}
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => handleStartChat(scenario.id)} data-testid={`button-start-${scenario.id}`}>
-                    <Play className="w-3 h-3 mr-1" /> Start
+                  <Button size="sm" variant="ghost" onClick={() => handleStartChat(scenario.id)} disabled={startingId === scenario.id} data-testid={`button-start-${scenario.id}`}>
+                    {startingId === scenario.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Play className="w-3 h-3 mr-1" />}
+                    {startingId === scenario.id ? "Starting..." : "Start"}
                   </Button>
                 </div>
               </Card>
