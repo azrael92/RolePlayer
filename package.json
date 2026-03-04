@@ -1,6 +1,7 @@
 {
-  "name": "rest-express",
+  "name": "roleplayer",
   "version": "1.0.0",
+  "description": "A tabletop-inspired role-play chat app with AI-driven scene direction, dynamic avatars, and scenario management.",
   "type": "module",
   "license": "MIT",
   "scripts": {

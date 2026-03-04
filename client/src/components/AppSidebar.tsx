@@ -45,7 +45,7 @@ export function AppSidebar() {
           <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-white font-bold text-xs shrink-0">
             R
           </div>
-          <span className="font-semibold text-sm text-sidebar-foreground">RolePlay</span>
+          <span className="font-semibold text-sm text-sidebar-foreground">RolePlayer</span>
         </div>
       </SidebarHeader>
 

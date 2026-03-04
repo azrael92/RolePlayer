@@ -25,7 +25,7 @@ export default function LandingPage() {
         <div className="relative z-10 flex flex-col items-center text-center max-w-2xl">
           <div className="inline-flex items-center gap-2 mb-8 px-3 py-1.5 rounded-full bg-secondary border text-sm text-muted-foreground">
             <MessageSquare className="w-4 h-4 text-primary" />
-            RolePlay
+            RolePlayer
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight leading-tight" data-testid="text-hero-title">
