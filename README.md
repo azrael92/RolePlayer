@@ -69,8 +69,8 @@ The server parses these out of the stream, applies the avatar/background changes
 ### Setup
 
 ```bash
-git clone https://github.com/azrael92/Chatapp.git
-cd Chatapp
+git clone https://github.com/azrael92/RolePlayer.git
+cd RolePlayer
 npm install
 ```
 
